@@ -3,6 +3,98 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+class FNNModel(nn.Module):
+    """Container module with an encoder, a feed-forward module, and a decoder."""
+
+    def __init__(self, seq_len, ntoken, ninp, nhid, nlayers, dropout=0.5, tie_weights=False):
+        '''
+        Arguments:
+            seq_len: the input sequence length, which shall be fixed for a Feed-forward Network
+        '''
+        super(FNNModel, self).__init__()
+        self.seq_len = seq_len
+        # Reserve a token for padding
+        self.pad = ntoken
+        ntoken = ntoken + 1
+        self.ntoken = ntoken
+        self.drop = nn.Dropout(dropout)
+        self.encoder = nn.Embedding(ntoken, ninp)
+        self.fc = nn.Linear(seq_len*ninp, nhid)
+        self.tanh = nn.Tanh()
+        self.decoder = nn.Linear(nhid, ntoken)
+
+        # Tie weights: weight sharing between encoder and decoder
+        if tie_weights:
+            if nhid != ninp:
+                raise ValueError('When using the tied flag, nhid must be equal to emsize')
+            self.decoder.weight = self.encoder.weight
+
+        self.init_weights()
+
+        self.nhid = nhid
+        self.nlayers = nlayers
+
+    def init_weights(self):
+        initrange = 0.1
+        nn.init.uniform_(self.encoder.weight, -initrange, initrange)
+        nn.init.zeros_(self.decoder.weight)
+        nn.init.uniform_(self.decoder.weight, -initrange, initrange)
+        nn.init.uniform_(self.fc.weight, -initrange, initrange)
+
+    def wrap_input(self, input):
+        '''
+        Preprocess the input to fit the computation graph of FNNModel
+        e.g. input = [[1, 3], 
+                      [2, 4]]
+             wrapped_input = [
+                 [[<PAD>, 1], [<PAD>, 3], 
+                 [[1, 2]], [3, 4]]
+             ]
+        Arguments:
+            input: torch tensor with shape [seq_len, batch_size]
+        Returns:
+            wrapped_input: torch tensor with shape [seq_len, batch_size, model_seq_len]
+        '''
+        wrapped_input = []
+        batch_size = input.shape[1]
+        seq_len = input.shape[0]
+        # Move along the time dimension
+        for step_id in range(0, seq_len):
+            if step_id == self.seq_len-1:
+                # The last time step needs no padding
+                wrapped_input.append(input)
+                continue
+            # Otherwise, get available tokens until this step
+            valid_tokens = input[0:step_id+1, :]
+            padding = self.pad * torch.ones(
+                [self.seq_len-1-step_id, batch_size], dtype=torch.int32
+            ).to(valid_tokens.device)
+            padded_tokens = torch.cat(
+                [padding, valid_tokens], dim=0)
+            wrapped_input.append(padded_tokens)
+        # [seq_len, seq_len, batch_size]
+        wrapped_input = torch.stack(wrapped_input, dim=0)
+        # [seq_len, batch_size, seq_len]
+        wrapped_input = torch.transpose(wrapped_input, 1, 2)
+        return wrapped_input
+        
+    def forward(self, input):
+        #print(input.shape, self.seq_len)
+        wrapped_input = self.wrap_input(input)
+        #print("wrapped_input", wrapped_input.shape)
+        valid_len = wrapped_input.shape[2]==self.seq_len
+        assert valid_len, "wrapped seq_len must be same to FNNModel.seq_len"
+        emb = self.drop(self.encoder(wrapped_input))
+        #print("emb", emb.shape)
+        emb = emb.view(emb.shape[0], emb.shape[1], -1)
+        #print("emb", emb.shape)
+        output = self.fc(emb)
+        output = self.tanh(output)
+        output = self.drop(output)
+        decoded = self.decoder(output)
+        decoded = decoded.view(-1, self.ntoken)
+        return F.log_softmax(decoded, dim=1)
+
 class RNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
@@ -46,6 +138,7 @@ class RNNModel(nn.Module):
         nn.init.uniform_(self.decoder.weight, -initrange, initrange)
 
     def forward(self, input, hidden):
+        #self.inspect_forward(input, hidden)
         emb = self.drop(self.encoder(input))
         output, hidden = self.rnn(emb, hidden)
         output = self.drop(output)
@@ -60,6 +153,22 @@ class RNNModel(nn.Module):
                     weight.new_zeros(self.nlayers, bsz, self.nhid))
         else:
             return weight.new_zeros(self.nlayers, bsz, self.nhid)
+
+    def inspect_forward(self, input, hidden):
+        print('input:', input.shape)
+        print('input:', input)
+        print('hidden[0]:', hidden[0].shape)
+        emb = self.drop(self.encoder(input))
+        print('emb:', emb.shape)
+        output, hidden = self.rnn(emb, hidden)
+        output = self.drop(output)
+        print('output:', output.shape)
+        print('hidden[0]:', hidden[0].shape)
+        decoded = self.decoder(output)
+        print('decoded:', decoded.shape)
+        decoded = decoded.view(-1, self.ntoken)
+        print('decoded:', decoded.shape)
+        return F.log_softmax(decoded, dim=1), hidden
 
 # Temporarily leave PositionalEncoding module here. Will be moved somewhere else.
 class PositionalEncoding(nn.Module):
@@ -150,3 +259,7 @@ class TransformerModel(nn.Module):
         output = self.transformer_encoder(src, self.src_mask)
         output = self.decoder(output)
         return F.log_softmax(output, dim=-1)
+
+
+if __name__ == '__main__':
+    None

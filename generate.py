@@ -30,6 +30,10 @@ parser.add_argument('--temperature', type=float, default=1.0,
                     help='temperature - higher will increase diversity')
 parser.add_argument('--log-interval', type=int, default=100,
                     help='reporting interval')
+parser.add_argument('--model', type=str, default=None,
+                    help='Model Type')
+parser.add_argument('--bptt', type=int, default=35,
+                    help='sequence length')
 args = parser.parse_args()
 
 # Set the random seed manually for reproducibility.
@@ -51,15 +55,22 @@ corpus = data.Corpus(args.data)
 ntokens = len(corpus.dictionary)
 
 is_transformer_model = hasattr(model, 'model_type') and model.model_type == 'Transformer'
-if not is_transformer_model:
+is_fnn_model = args.model == 'FNN'
+is_not_rnn_model = is_fnn_model or is_transformer_model
+if not is_not_rnn_model:
     hidden = model.init_hidden(1)
 input = torch.randint(ntokens, (1, 1), dtype=torch.long).to(device)
 
 with open(args.outf, 'w') as outf:
     with torch.no_grad():  # no tracking history
         for i in range(args.words):
-            if is_transformer_model:
-                output = model(input, False)
+            if is_not_rnn_model:
+                if is_transformer_model:
+                    output = model(input, False)
+                else:
+                    if input.shape[0] > args.bptt:
+                        input = input[-args.bptt:]
+                    output = model(input)
                 word_weights = output[-1].squeeze().div(args.temperature).exp().cpu()
                 word_idx = torch.multinomial(word_weights, 1)[0]
                 word_tensor = torch.Tensor([[word_idx]]).long().to(device)

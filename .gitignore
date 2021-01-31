@@ -1,5 +1,8 @@
 # Checkpoint
 model.pt
+# Text Generated
+generated.txt
+generated_*.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
