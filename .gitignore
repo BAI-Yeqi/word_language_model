@@ -1,5 +1,6 @@
 # Checkpoint
-model.pt
+saved_model/
+*.pt
 # Text Generated
 generated.txt
 generated_*.txt

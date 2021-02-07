@@ -1,3 +1,18 @@
+# Word-level language model FNN
+This example trains a FNN on a language modeling task.
+By default, the training script uses the Wikitext-2 dataset, provided.
+```bash 
+# Train a FNN Model
+mkdir saved_model
+CUDA_VISIBLE_DEVICES=6 python main.py --cuda --epochs 15 \
+  --model FNN --bptt 10 --dropout 0 --save saved_model/FNN.pt
+# Train a FNN Model with sharing the input and output layer
+CUDA_VISIBLE_DEVICES=7 python main.py --cuda --epochs 15 \
+  --model FNN --bptt 10 --dropout 0 --tied --save saved_model/FNN_tied.pt
+```
+The trained model can then be used by the generate script to generate new text.
+
+
 # Word-level language modeling RNN
 
 This example trains a multi-layer RNN (Elman, GRU, or LSTM) on a language modeling task.
