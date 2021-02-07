@@ -22,7 +22,7 @@ parser.add_argument('--nhid', type=int, default=200,
                     help='number of hidden units per layer')
 parser.add_argument('--nlayers', type=int, default=2,
                     help='number of layers')
-parser.add_argument('--lr', type=float, default=20,
+parser.add_argument('--lr', type=float, default=0.001,
                     help='initial learning rate')
 parser.add_argument('--clip', type=float, default=0.25,
                     help='gradient clipping')
@@ -117,6 +117,7 @@ else:
         args.nlayers, args.dropout, args.tied).to(device)
 
 criterion = nn.NLLLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
 
 ###############################################################################
 # Training code
@@ -197,15 +198,16 @@ def train():
 
         # `clip_grad_norm` helps prevent the exploding gradient problem in RNNs / LSTMs.
         torch.nn.utils.clip_grad_norm_(model.parameters(), args.clip)
-        for p in model.parameters():
-            p.data.add_(p.grad, alpha=-lr)
+        #for p in model.parameters():
+        #    p.data.add_(p.grad, alpha=-lr)
+        optimizer.step()
 
         total_loss += loss.item()
 
         if batch % args.log_interval == 0 and batch > 0:
             cur_loss = total_loss / args.log_interval
             elapsed = time.time() - start_time
-            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '
+            print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.5f} | ms/batch {:5.2f} | '
                     'loss {:5.2f} | ppl {:8.2f}'.format(
                 epoch, batch, len(train_data) // args.bptt, lr,
                 elapsed * 1000 / args.log_interval, cur_loss, math.exp(cur_loss)))
@@ -247,6 +249,7 @@ try:
         else:
             # Anneal the learning rate if no improvement has been seen in the validation dataset.
             lr /= 4.0
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 except KeyboardInterrupt:
     print('-' * 89)
     print('Exiting from training early')
