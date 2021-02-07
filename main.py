@@ -9,6 +9,7 @@ import torch.onnx
 
 import data
 import model
+from spearman import get_spearman_cor
 
 parser = argparse.ArgumentParser(description='PyTorch Wikitext-2 RNN/LSTM/GRU/Transformer Language Model')
 parser.add_argument('--data', type=str, default='./data/wikitext-2',
@@ -45,6 +46,9 @@ parser.add_argument('--save', type=str, default='model.pt',
                     help='path to save the final model')
 parser.add_argument('--onnx-export', type=str, default='',
                     help='path to export the final model in onnx format')
+parser.add_argument('--ws_txt', type=str, 
+                    default='./data/wordsim353_sim_rel/wordsim_similarity_goldstandard.txt',
+                    help='Word similarity text file')
 
 parser.add_argument('--nhead', type=int, default=2,
                     help='the number of heads in the encoder/decoder of the transformer model')
@@ -163,6 +167,7 @@ def evaluate(data_source):
                 output, hidden = model(data, hidden)
                 hidden = repackage_hidden(hidden)
             total_loss += len(data) * criterion(output, targets).item()
+        get_spearman_cor(args.ws_txt, model, corpus.dictionary.word2idx, args.cuda)
     return total_loss / (len(data_source) - 1)
 
 
