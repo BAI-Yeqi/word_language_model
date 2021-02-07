@@ -95,6 +95,15 @@ class FNNModel(nn.Module):
         decoded = decoded.view(-1, self.ntoken)
         return F.log_softmax(decoded, dim=1)
 
+    def get_word_sim(self, w1, w2):
+        '''
+        Return the cosine similarity between w1 and w2
+        '''
+        e1 = self.encoder(w1)
+        e2 = self.encoder(w2)
+        return F.cosine_similarity(e1, e2, dim=0)
+
+
 class RNNModel(nn.Module):
     """Container module with an encoder, a recurrent module, and a decoder."""
 
@@ -262,4 +271,7 @@ class TransformerModel(nn.Module):
 
 
 if __name__ == '__main__':
-    None
+    fnn_model = FNNModel(10, 1000, 200, 200, 1, 0.5)
+    fnn_model.init_weights()
+    sim = fnn_model.get_word_sim(torch.tensor(3), torch.tensor(5))
+    print(sim)
