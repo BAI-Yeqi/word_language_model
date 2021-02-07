@@ -43,4 +43,4 @@ def get_spearman_cor(ws_txt, model, word2idx, cuda=False):
 
 
 if __name__ == '__main__':
-    read_ws_data('./data/wordsim353_sim_rel/wordsim_similarity_goldstandard.txt')
+    txt2list('./data/wordsim353_sim_rel/wordsim_similarity_goldstandard.txt')
