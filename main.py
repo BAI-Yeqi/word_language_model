@@ -115,6 +115,7 @@ else:
     model = model.RNNModel(
         args.model, ntokens, args.emsize, args.nhid, 
         args.nlayers, args.dropout, args.tied).to(device)
+print("Vocabulary size: {}".format(ntokens))
 
 criterion = nn.NLLLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
