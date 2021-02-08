@@ -6,6 +6,7 @@ By default, the training script uses the Wikitext-2 dataset, provided.
 mkdir saved_model
 CUDA_VISIBLE_DEVICES=6 python main.py --cuda --epochs 15 \
   --model FNN --bptt 10 --dropout 0 --save saved_model/FNN.pt
+  
 # Train a FNN Model with shared input-output layer
 CUDA_VISIBLE_DEVICES=7 python main.py --cuda --epochs 15 \
   --model FNN --bptt 10 --dropout 0 --tied --save saved_model/FNN_tied.pt
