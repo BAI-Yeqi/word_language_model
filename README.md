@@ -1,4 +1,5 @@
 # Word-level language model FNN
+This repo implements the paper *A Neural Probabilistic Language Model* (https://www.jmlr.org/papers/volume3/bengio03a/bengio03a.pdf) in PyTorch.
 
 ## Training, Testing, and Generating New Text
 This example trains a FNN on a language modeling task.
